@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
 
@@ -13,7 +14,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
  *
  * Field frame: X forward and Y left as the robot faced when the pose was last
  * reset, in inches; heading counter-clockwise, in radians.
+ *
+ * The constants below are @Config: Swervely can tune them live.
  */
+@Config
 public class MecanumOdometry {
 
     /** goBILDA 104 mm mecanum wheel. */

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -24,13 +26,12 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  *   options     - "forward is where the robot faces now" (reset heading and position)
  *
  * The robot's position on the field (from the wheel encoders and the IMU) is
- * shown in telemetry.
+ * shown in telemetry and sent to Swervely as X, Y (inches) and Heading
+ * (degrees), so it draws the robot on its field view. Slow speed and strafe
+ * gain are in DriveTuning and can be tuned live from Swervely.
  */
 @TeleOp(name = "Mecanum TeleOp", group = "Drive")
 public class MecanumTeleOp extends LinearOpMode {
-
-    /** Speed while slow mode is held. */
-    private static final double SLOW = 0.35;
 
     @Override
     public void runOpMode() {
@@ -62,6 +63,8 @@ public class MecanumTeleOp extends LinearOpMode {
         imu.resetYaw();
         MecanumOdometry odometry = new MecanumOdometry(frontLeft, frontRight, backLeft, backRight, imu);
 
+        FtcDashboard swervely = FtcDashboard.getInstance();
+
         telemetry.addLine("Ready. Left stick: drive, right stick: turn, RB: slow, options: reset heading.");
         telemetry.update();
         waitForStart();
@@ -83,16 +86,22 @@ public class MecanumTeleOp extends LinearOpMode {
             double heading = odometry.heading();
             double rotX = x * Math.cos(-heading) - y * Math.sin(-heading);
             double rotY = x * Math.sin(-heading) + y * Math.cos(-heading);
-            rotX *= 1.1; // strafing is a bit weaker on mecanum wheels
+            rotX *= DriveTuning.STRAFE_GAIN; // strafing is a bit weaker on mecanum wheels
 
             // Keep the ratios when any wheel would go past full power.
             double scale = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(turn), 1.0);
-            double speed = gamepad1.right_bumper ? SLOW : 1.0;
+            double speed = gamepad1.right_bumper ? DriveTuning.SLOW_SPEED : 1.0;
 
             frontLeft.setPower(speed * (rotY + rotX + turn) / scale);
             backLeft.setPower(speed * (rotY - rotX + turn) / scale);
             frontRight.setPower(speed * (rotY - rotX - turn) / scale);
             backRight.setPower(speed * (rotY + rotX - turn) / scale);
+
+            TelemetryPacket packet = new TelemetryPacket();
+            packet.put("X", odometry.x());
+            packet.put("Y", odometry.y());
+            packet.put("Heading", Math.toDegrees(odometry.heading()));
+            swervely.sendTelemetryPacket(packet);
 
             telemetry.addData("position", "X %.1f in, Y %.1f in", odometry.x(), odometry.y());
             telemetry.addData("heading", "%.1f°", Math.toDegrees(heading));
