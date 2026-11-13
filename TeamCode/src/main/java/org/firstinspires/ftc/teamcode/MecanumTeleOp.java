@@ -9,8 +9,6 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
 /**
  * Mecanum drive, field-centric: pushing the left stick forward always drives
  * away from the driver, whichever way the robot faces.
@@ -23,7 +21,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
  *   left stick  - drive and strafe
  *   right stick - turn
  *   right bumper (held) - slow mode for precise moves
- *   options     - "forward is where the robot faces now" (reset heading)
+ *   options     - "forward is where the robot faces now" (reset heading and position)
+ *
+ * The robot's position on the field (from the wheel encoders and the IMU) is
+ * shown in telemetry.
  */
 @TeleOp(name = "Mecanum TeleOp", group = "Drive")
 public class MecanumTeleOp extends LinearOpMode {
@@ -59,6 +60,7 @@ public class MecanumTeleOp extends LinearOpMode {
                 RevHubOrientationOnRobot.LogoFacingDirection.UP,
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD)));
         imu.resetYaw();
+        MecanumOdometry odometry = new MecanumOdometry(frontLeft, frontRight, backLeft, backRight, imu);
 
         telemetry.addLine("Ready. Left stick: drive, right stick: turn, RB: slow, options: reset heading.");
         telemetry.update();
@@ -68,7 +70,9 @@ public class MecanumTeleOp extends LinearOpMode {
         while (opModeIsActive()) {
             if (gamepad1.options) {
                 imu.resetYaw();
+                odometry.setPose(0, 0, 0);
             }
+            odometry.update();
 
             // Sticks: up is negative on the gamepad, so flip y.
             double y = -gamepad1.left_stick_y;
@@ -76,7 +80,7 @@ public class MecanumTeleOp extends LinearOpMode {
             double turn = gamepad1.right_stick_x;
 
             // Turn the stick direction from the field's frame into the robot's.
-            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double heading = odometry.heading();
             double rotX = x * Math.cos(-heading) - y * Math.sin(-heading);
             double rotY = x * Math.sin(-heading) + y * Math.cos(-heading);
             rotX *= 1.1; // strafing is a bit weaker on mecanum wheels
@@ -90,6 +94,7 @@ public class MecanumTeleOp extends LinearOpMode {
             frontRight.setPower(speed * (rotY - rotX - turn) / scale);
             backRight.setPower(speed * (rotY + rotX - turn) / scale);
 
+            telemetry.addData("position", "X %.1f in, Y %.1f in", odometry.x(), odometry.y());
             telemetry.addData("heading", "%.1f°", Math.toDegrees(heading));
             telemetry.addData("loop", "%.1f ms", loopTimer.milliseconds());
             telemetry.update();
